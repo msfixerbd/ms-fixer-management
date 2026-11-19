@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -5,9 +6,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#101827">
   <title>MS Fixer Management</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
 </head>
 <body>
-  <h1>MS Fixer Management</h1>
-  <p>Business Management System</p>
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand-logo">MS</div>
+      <h1>MS Fixer</h1>
+      <p>Business Management System</p>
+      <form id="loginForm">
+        <label>Email Address</label>
+        <input id="email" type="email" placeholder="Owner Email" required>
+        <label>Password</label>
+        <input id="password" type="password" placeholder="Password" required>
+        <button type="submit" class="primary-btn">Login</button>
+      </form>
+      <p id="loginMessage" class="message"></p>
+    </div>
+  </div>
+
+  <div id="appScreen" class="app-screen hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-logo">MS</div>
+        <div>
+          <h2>MS Fixer</h2>
+          <small>Management System</small>
+        </div>
+      </div>
+
+      <nav id="navigation">
+        <button class="nav-item active" data-page="dashboard">▦ Dashboard</button>
+        <button class="nav-item" data-page="products">▣ Products</button>
+        <button class="nav-item" data-page="customers">♙ Customers</button>
+        <button class="nav-item" data-page="suppliers">♧ Suppliers</button>
+        <button class="nav-item" data-page="sales">৳ Sales</button>
+        <button class="nav-item" data-page="expenses">↗ Expenses</button>
+      </nav>
+
+      <button id="logoutBtn" class="logout-btn">↪ Logout</button>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button id="menuBtn" class="menu-btn">☰</button>
+        <div>
+          <h2 id="pageTitle">Dashboard</h2>
+          <small>Welcome to MS Fixer</small>
+        </div>
+        <div class="owner-label">OWNER</div>
+      </header>
+
+      <section id="pageContent"></section>
+      <div id="toast" class="toast"></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="app.js"></script>
 </body>
 </html>
