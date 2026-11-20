@@ -387,10 +387,10 @@ const navigationItems = [
   ["warranty", "Warranty"],
   ["branches", "Branches"],
   ["employees", "Employees"],
-  ["expenses", "Expenses"]
-];  ["expenses", "Expenses"],
+  ["expenses", "Expenses"],
   ["settings", "⚙️ Admin Settings"]
 ];
+
 
 function buildNavigation() {
   const nav = $("navigation");
