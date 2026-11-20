@@ -388,6 +388,8 @@ const navigationItems = [
   ["branches", "Branches"],
   ["employees", "Employees"],
   ["expenses", "Expenses"]
+];  ["expenses", "Expenses"],
+  ["settings", "⚙️ Admin Settings"]
 ];
 
 function buildNavigation() {
@@ -422,7 +424,6 @@ $("menuBtn").addEventListener("click", () => {
 /* =========================================
    PAGE LOADER
    ========================================= */
-
 async function loadPage(page) {
   currentPage = page;
   editingId = null;
@@ -433,13 +434,18 @@ async function loadPage(page) {
     return;
   }
 
+  if (page === "settings") {
+    $("pageTitle").textContent = "Admin Settings";
+    await loadAdminSettings();
+    return;
+  }
+
   const config = modules[page];
   if (!config) return;
 
   $("pageTitle").textContent = config.title;
   await renderModule(page);
 }
-
 /* =========================================
    DASHBOARD
    ========================================= */
@@ -880,6 +886,402 @@ async function initialize() {
     await startApp();
   } else {
     showLogin();
+  }
+}
+
+/* =========================================
+   MS FIXER - SUPER ADMIN SETTINGS
+   ========================================= */
+
+let appSettings = {};
+
+async function loadAdminSettings() {
+  const content = $("pageContent");
+  content.innerHTML = "<p>Loading Admin Settings...</p>";
+
+  try {
+    const { data, error } = await db
+      .from("app_settings")
+      .select("*")
+      .eq("id", 1)
+      .single();
+
+    if (error) throw error;
+
+    if (data.owner_id && data.owner_id !== currentUser.id) {
+      throw new Error("Settings Owner ID does not match your account.");
+    }
+
+    appSettings = data;
+
+    document.body.dataset.theme = data.theme || "light";
+
+    content.innerHTML = `
+      <div class="panel">
+        <h3>🏢 Company Profile</h3>
+
+        <form id="companySettingsForm" class="form-card">
+          <div class="form-row">
+            <div>
+              <label>Company Name</label>
+              <input name="company_name"
+                value="${escapeHTML(data.company_name || "MS FIXER")}"
+                required>
+            </div>
+
+            <div>
+              <label>Phone</label>
+              <input name="phone"
+                value="${escapeHTML(data.phone || "")}">
+            </div>
+
+            <div>
+              <label>Email</label>
+              <input name="email" type="email"
+                value="${escapeHTML(data.email || "")}">
+            </div>
+
+            <div>
+              <label>Address</label>
+              <input name="address"
+                value="${escapeHTML(data.address || "")}">
+            </div>
+
+            <div>
+              <label>Company Logo</label>
+              <input type="file" id="companyLogoFile"
+                accept="image/png,image/jpeg,image/webp">
+            </div>
+          </div>
+
+          <div id="logoPreview" style="margin:15px 0">
+            ${data.company_logo ? `
+              <img src="${escapeHTML(data.company_logo)}"
+                alt="Company Logo"
+                style="max-width:130px;max-height:100px;object-fit:contain">
+            ` : "No Logo Uploaded"}
+          </div>
+
+          <button type="submit" class="primary-btn">
+            Save Company Profile
+          </button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>🧾 Invoice Settings</h3>
+
+        <form id="invoiceSettingsForm" class="form-card">
+          <div class="form-row">
+            <div>
+              <label>Invoice Prefix</label>
+              <input name="invoice_prefix"
+                value="${escapeHTML(data.invoice_prefix || "MSF")}">
+            </div>
+
+            <div>
+              <label>Currency</label>
+              <select name="currency">
+                <option value="BDT" ${data.currency === "BDT" ? "selected" : ""}>BDT - Taka</option>
+                <option value="USD" ${data.currency === "USD" ? "selected" : ""}>USD</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Invoice Footer</label>
+              <input name="invoice_footer"
+                value="${escapeHTML(data.invoice_footer || "Thank you for shopping with MS FIXER")}">
+            </div>
+          </div>
+
+          <button class="primary-btn" type="submit">
+            Save Invoice Settings
+          </button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>🎨 Appearance Settings</h3>
+
+        <form id="appearanceForm" class="form-card">
+          <div class="form-row">
+            <div>
+              <label>Theme</label>
+              <select name="theme">
+                <option value="light" ${data.theme === "light" ? "selected" : ""}>Light</option>
+                <option value="dark" ${data.theme === "dark" ? "selected" : ""}>Dark</option>
+              </select>
+            </div>
+
+            <div>
+              <label>Language Preference</label>
+              <select name="language">
+                <option value="en" ${data.language === "en" ? "selected" : ""}>English</option>
+                <option value="bn" ${data.language === "bn" ? "selected" : ""}>বাংলা</option>
+              </select>
+            </div>
+          </div>
+
+          <button class="primary-btn" type="submit">
+            Save Appearance
+          </button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>🔐 Security</h3>
+
+        <form id="passwordChangeForm" class="form-card">
+          <div class="form-row">
+            <div>
+              <label>New Password</label>
+              <input name="new_password" type="password"
+                minlength="8" required>
+            </div>
+
+            <div>
+              <label>Confirm New Password</label>
+              <input name="confirm_password" type="password"
+                minlength="8" required>
+            </div>
+          </div>
+
+          <button class="primary-btn" type="submit">
+            Change Password
+          </button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h3>💾 Data Backup</h3>
+        <p>Export available business records as a JSON backup file.</p>
+        <button class="primary-btn" id="backupButton">
+          Download Data Backup
+        </button>
+      </div>
+
+      <div class="panel">
+        <h3>👑 Super Admin Account</h3>
+        <p>Logged in as: <strong>${escapeHTML(currentUser.email || "")}</strong></p>
+        <p>Access: <strong>Super Admin / Owner</strong></p>
+        <p>Owner ID: <small>${escapeHTML(currentUser.id)}</small></p>
+      </div>
+    `;
+
+    $("companySettingsForm").addEventListener("submit", saveCompanySettings);
+    $("invoiceSettingsForm").addEventListener("submit", saveInvoiceSettings);
+    $("appearanceForm").addEventListener("submit", saveAppearanceSettings);
+    $("passwordChangeForm").addEventListener("submit", changeAdminPassword);
+    $("backupButton").addEventListener("click", downloadDataBackup);
+
+  } catch (error) {
+    showError(error);
+    content.innerHTML = "<p>Settings load করা যায়নি।</p>";
+  }
+}
+
+/* SAVE SETTINGS HELPER */
+
+async function updateAppSettings(values) {
+  const { error } = await db
+    .from("app_settings")
+    .update({
+      ...values,
+      updated_at: new Date().toISOString(),
+      updated_by: currentUser.id
+    })
+    .eq("id", 1)
+    .eq("owner_id", currentUser.id);
+
+  if (error) throw error;
+
+  appSettings = { ...appSettings, ...values };
+}
+
+/* COMPANY PROFILE */
+
+async function saveCompanySettings(event) {
+  event.preventDefault();
+
+  try {
+    const form = new FormData(event.target);
+
+    const values = {
+      company_name: form.get("company_name").trim(),
+      phone: form.get("phone").trim(),
+      email: form.get("email").trim(),
+      address: form.get("address").trim()
+    };
+
+    const file = $("companyLogoFile").files[0];
+
+    if (file) {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+        throw new Error("Only PNG, JPG and WEBP images are allowed.");
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        throw new Error("Logo size must be under 2 MB.");
+      }
+
+      const extension = file.name.split(".").pop().toLowerCase();
+      const path = `company-logo-${currentUser.id}.${extension}`;
+
+      const { error: uploadError } = await db.storage
+        .from("ms-fixer-assets")
+        .upload(path, file, {
+          upsert: true,
+          contentType: file.type
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = db.storage
+        .from("ms-fixer-assets")
+        .getPublicUrl(path);
+
+      values.company_logo = data.publicUrl;
+    }
+
+    await updateAppSettings(values);
+
+    notify("Company Profile Saved Successfully");
+    await loadAdminSettings();
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* INVOICE SETTINGS */
+
+async function saveInvoiceSettings(event) {
+  event.preventDefault();
+
+  try {
+    const form = new FormData(event.target);
+
+    await updateAppSettings({
+      invoice_prefix: form.get("invoice_prefix").trim(),
+      invoice_footer: form.get("invoice_footer").trim(),
+      currency: form.get("currency")
+    });
+
+    notify("Invoice Settings Saved");
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* APPEARANCE SETTINGS */
+
+async function saveAppearanceSettings(event) {
+  event.preventDefault();
+
+  try {
+    const form = new FormData(event.target);
+
+    const values = {
+      theme: form.get("theme"),
+      language: form.get("language")
+    };
+
+    await updateAppSettings(values);
+
+    document.body.dataset.theme = values.theme;
+
+    notify("Appearance Settings Saved");
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* CHANGE PASSWORD */
+
+async function changeAdminPassword(event) {
+  event.preventDefault();
+
+  const form = new FormData(event.target);
+  const password = form.get("new_password");
+  const confirmPassword = form.get("confirm_password");
+
+  if (password.length < 8) {
+    return notify("Password must contain at least 8 characters.", true);
+  }
+
+  if (password !== confirmPassword) {
+    return notify("Passwords do not match.", true);
+  }
+
+  try {
+    const { error } = await db.auth.updateUser({
+      password: password
+    });
+
+    if (error) throw error;
+
+    event.target.reset();
+    notify("Password Changed Successfully");
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* BUSINESS DATA EXPORT */
+
+async function downloadDataBackup() {
+  const tables = [
+    "products", "categories", "customers", "suppliers",
+    "branches", "employees", "sales", "sales_items",
+    "purchases", "purchase_items", "stock_movements",
+    "expenses", "financial_transactions", "payments",
+    "service_jobs", "warranty_cards", "app_settings"
+  ];
+
+  const backup = {
+    company: "MS FIXER",
+    exported_at: new Date().toISOString(),
+    exported_by: currentUser.id,
+    data: {}
+  };
+
+  try {
+    notify("Preparing Backup...");
+
+    for (const table of tables) {
+      const { data, error } = await db.from(table).select("*");
+
+      if (error) {
+        throw new Error(`${table}: ${error.message}`);
+      }
+
+      backup.data[table] = data || [];
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(backup, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `MS-FIXER-Backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    URL.revokeObjectURL(url);
+
+    notify("Backup Downloaded Successfully");
+
+  } catch (error) {
+    showError(error);
   }
 }
 
