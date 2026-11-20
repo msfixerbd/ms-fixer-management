@@ -425,7 +425,6 @@ $("menuBtn").addEventListener("click", () => {
    PAGE LOADER
    ========================================= */
 
- 
 async function loadRecords(page) {
   const config = modules[page];
   const list = $("recordList");
@@ -443,8 +442,7 @@ async function loadRecords(page) {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      list.innerHTML =
-        '<div class="empty-state">No records found.</div>';
+      list.innerHTML = '<div class="empty-state">No records found.</div>';
       return;
     }
 
@@ -453,13 +451,12 @@ async function loadRecords(page) {
         <table class="data-table">
           <thead>
             <tr>
-              ${config.columns.map(column => `
-                <th>${escapeHTML(column.replaceAll("_", " "))}</th>
-              `).join("")}
+              ${config.columns.map(column =>
+                `<th>${escapeHTML(column.replaceAll("_", " "))}</th>`
+              ).join("")}
               <th>Actions</th>
             </tr>
           </thead>
-
           <tbody>
             ${data.map(record => `
               <tr>
@@ -468,32 +465,24 @@ async function loadRecords(page) {
 
                   const isMoney =
                     column.includes("price") ||
-                    [
-                      "total", "paid", "due", "amount",
-                      "repair_cost", "unit_cost", "line_total"
-                    ].includes(column);
+                    ["total", "paid", "due", "amount",
+                     "repair_cost", "unit_cost", "line_total"].includes(column);
 
-                  return `
-                    <td>${escapeHTML(
-                      value == null
-                        ? "-"
-                        : isMoney
-                          ? money(value)
-                          : value
-                    )}</td>
-                  `;
+                  return `<td>${escapeHTML(
+                    value == null
+                      ? "-"
+                      : isMoney
+                        ? money(value)
+                        : value
+                  )}</td>`;
                 }).join("")}
 
                 <td>
                   <button class="primary-small"
-                    data-edit="${escapeHTML(record.id)}">
-                    Edit
-                  </button>
+                    data-edit="${escapeHTML(record.id)}">Edit</button>
 
                   <button class="danger-small"
-                    data-delete="${escapeHTML(record.id)}">
-                    Delete
-                  </button>
+                    data-delete="${escapeHTML(record.id)}">Delete</button>
                 </td>
               </tr>
             `).join("")}
@@ -503,21 +492,23 @@ async function loadRecords(page) {
     `;
 
     list.querySelectorAll("[data-edit]").forEach(button => {
-      button.addEventListener("click", () => {
-        editRecord(page, button.dataset.edit);
-      });
+      button.addEventListener("click", () =>
+        editRecord(page, button.dataset.edit)
+      );
     });
 
     list.querySelectorAll("[data-delete]").forEach(button => {
-      button.addEventListener("click", () => {
-        deleteRecord(page, button.dataset.delete);
-      });
+      button.addEventListener("click", () =>
+        deleteRecord(page, button.dataset.delete)
+      );
     });
 
   } catch (error) {
     showError(error);
     list.innerHTML = "<p>Records load করা যায়নি।</p>";
   }
+}
+
 }
 /* =========================================
    DASHBOARD
