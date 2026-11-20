@@ -918,45 +918,17 @@ async function loadAdminSettings() {
 
     content.innerHTML = `
       <div class="panel">
-      
         <h3>🏢 Company Profile</h3>
 
         <form id="companySettingsForm" class="form-card">
           <div class="form-row">
+
             <div>
               <label>Company Name</label>
               <input name="company_name"
                 value="${escapeHTML(data.company_name || "MS FIXER")}"
                 required>
             </div>
-
-async function downloadCompanyLogo() {
-  try {
-    const logoUrl = appSettings.company_logo;
-
-    if (!logoUrl) {
-      throw new Error("No Company Logo Uploaded");
-    }
-
-    const response = await fetch(logoUrl);
-    if (!response.ok) throw new Error("Logo download failed");
-
-    const blob = await response.blob();
-    const url = URL.createObjectURL(blob);
-
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "MS-FIXER-Company-Logo.png";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-  } catch (error) {
-    showError(error);
-  }
-}
 
             <div>
               <label>Phone</label>
@@ -981,23 +953,31 @@ async function downloadCompanyLogo() {
               <input type="file" id="companyLogoFile"
                 accept="image/png,image/jpeg,image/webp">
             </div>
+
           </div>
 
-         
-<div id="logoPreview" style="margin:15px 0">
-  ${data.company_logo ? `
-    <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap">
-      <img src="${escapeHTML(data.company_logo)}"
-        alt="MS FIXER Logo"
-        style="width:130px;height:100px;object-fit:contain">
+          <div id="logoPreview" style="margin:15px 0">
+            ${
+              data.company_logo
+                ? `
+                  <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap">
 
-      <button type="button" id="downloadCompanyLogo"
-        class="primary-small">
-        Download Logo
-      </button>
-    </div>
-  ` : "No Logo Uploaded"}
-</div>
+                    <img
+                      src="${escapeHTML(data.company_logo)}"
+                      alt="MS FIXER Logo"
+                      style="width:130px;height:100px;object-fit:contain">
+
+                    <button type="button"
+                      id="downloadCompanyLogo"
+                      class="primary-small">
+                      Download Logo
+                    </button>
+
+                  </div>
+                `
+                : "No Logo Uploaded"
+            }
+          </div>
 
           <button type="submit" class="primary-btn">
             Save Company Profile
@@ -1010,6 +990,7 @@ async function downloadCompanyLogo() {
 
         <form id="invoiceSettingsForm" class="form-card">
           <div class="form-row">
+
             <div>
               <label>Invoice Prefix</label>
               <input name="invoice_prefix"
@@ -1019,16 +1000,27 @@ async function downloadCompanyLogo() {
             <div>
               <label>Currency</label>
               <select name="currency">
-                <option value="BDT" ${data.currency === "BDT" ? "selected" : ""}>BDT - Taka</option>
-                <option value="USD" ${data.currency === "USD" ? "selected" : ""}>USD</option>
+                <option value="BDT"
+                  ${data.currency === "BDT" ? "selected" : ""}>
+                  BDT - Taka
+                </option>
+
+                <option value="USD"
+                  ${data.currency === "USD" ? "selected" : ""}>
+                  USD
+                </option>
               </select>
             </div>
 
             <div>
               <label>Invoice Footer</label>
               <input name="invoice_footer"
-                value="${escapeHTML(data.invoice_footer || "Thank you for shopping with MS FIXER")}">
+                value="${escapeHTML(
+                  data.invoice_footer ||
+                  "Thank you for shopping with MS FIXER"
+                )}">
             </div>
+
           </div>
 
           <button class="primary-btn" type="submit">
@@ -1042,21 +1034,37 @@ async function downloadCompanyLogo() {
 
         <form id="appearanceForm" class="form-card">
           <div class="form-row">
+
             <div>
               <label>Theme</label>
               <select name="theme">
-                <option value="light" ${data.theme === "light" ? "selected" : ""}>Light</option>
-                <option value="dark" ${data.theme === "dark" ? "selected" : ""}>Dark</option>
+                <option value="light"
+                  ${data.theme === "light" ? "selected" : ""}>
+                  Light
+                </option>
+
+                <option value="dark"
+                  ${data.theme === "dark" ? "selected" : ""}>
+                  Dark
+                </option>
               </select>
             </div>
 
             <div>
               <label>Language Preference</label>
               <select name="language">
-                <option value="en" ${data.language === "en" ? "selected" : ""}>English</option>
-                <option value="bn" ${data.language === "bn" ? "selected" : ""}>বাংলা</option>
+                <option value="en"
+                  ${data.language === "en" ? "selected" : ""}>
+                  English
+                </option>
+
+                <option value="bn"
+                  ${data.language === "bn" ? "selected" : ""}>
+                  বাংলা
+                </option>
               </select>
             </div>
+
           </div>
 
           <button class="primary-btn" type="submit">
@@ -1070,17 +1078,19 @@ async function downloadCompanyLogo() {
 
         <form id="passwordChangeForm" class="form-card">
           <div class="form-row">
+
             <div>
               <label>New Password</label>
-              <input name="new_password" type="password"
-                minlength="8" required>
+              <input name="new_password"
+                type="password" minlength="8" required>
             </div>
 
             <div>
               <label>Confirm New Password</label>
-              <input name="confirm_password" type="password"
-                minlength="8" required>
+              <input name="confirm_password"
+                type="password" minlength="8" required>
             </div>
+
           </div>
 
           <button class="primary-btn" type="submit">
@@ -1091,7 +1101,9 @@ async function downloadCompanyLogo() {
 
       <div class="panel">
         <h3>💾 Data Backup</h3>
+
         <p>Export available business records as a JSON backup file.</p>
+
         <button class="primary-btn" id="backupButton">
           Download Data Backup
         </button>
@@ -1099,38 +1111,111 @@ async function downloadCompanyLogo() {
 
       <div class="panel">
         <h3>👑 Super Admin Account</h3>
-        <p>Logged in as: <strong>${escapeHTML(currentUser.email || "")}</strong></p>
-        <p>Access: <strong>Super Admin / Owner</strong></p>
-        <p>Owner ID: <small>${escapeHTML(currentUser.id)}</small></p>
+
+        <p>
+          Logged in as:
+          <strong>${escapeHTML(currentUser.email || "")}</strong>
+        </p>
+
+        <p>
+          Access:
+          <strong>Super Admin / Owner</strong>
+        </p>
+
+        <p>
+          Owner ID:
+          <small>${escapeHTML(currentUser.id)}</small>
+        </p>
       </div>
     `;
-$("companySettingsForm").addEventListener("submit", saveCompanySettings);
 
-const logoDownloadButton = $("downloadCompanyLogo");
+    // Company Profile
+    $("companySettingsForm")
+      .addEventListener("submit", saveCompanySettings);
 
-if (logoDownloadButton) {
-  logoDownloadButton.addEventListener("click", downloadCompanyLogo);
-}
+    // Logo Download
+    const logoDownloadButton = $("downloadCompanyLogo");
 
-$("invoiceSettingsForm").addEventListener("submit", saveInvoiceSettings);
-$("appearanceForm").addEventListener("submit", saveAppearanceSettings);
-$("passwordChangeForm").addEventListener("submit", changeAdminPassword);
-$("backupButton").addEventListener("click", downloadDataBackup);
+    if (logoDownloadButton) {
+      logoDownloadButton.addEventListener(
+        "click",
+        downloadCompanyLogo
+      );
+    }
 
-} catch (error) {
-  console.error("Admin Settings Error:", error);
+    // Invoice Settings
+    $("invoiceSettingsForm")
+      .addEventListener("submit", saveInvoiceSettings);
 
-  content.innerHTML = `
-    <div class="panel">
-      <h3>Settings Error</h3>
-      <pre style="white-space:pre-wrap;color:red;">
+    // Appearance Settings
+    $("appearanceForm")
+      .addEventListener("submit", saveAppearanceSettings);
+
+    // Password Change
+    $("passwordChangeForm")
+      .addEventListener("submit", changeAdminPassword);
+
+    // Backup
+    $("backupButton")
+      .addEventListener("click", downloadDataBackup);
+
+  } catch (error) {
+    console.error("Admin Settings Error:", error);
+
+    content.innerHTML = `
+      <div class="panel">
+        <h3>Settings Error</h3>
+
+        <pre style="white-space:pre-wrap;color:red;">
 ${escapeHTML(error?.message || String(error))}
-      </pre>
-    </div>
-  `;
+        </pre>
+      </div>
+    `;
 
-  showError(error);
+    showError(error);
+  }
 }
+
+/* =========================================
+   COMPANY LOGO DOWNLOAD
+   ========================================= */
+
+async function downloadCompanyLogo() {
+  try {
+    const logoUrl = appSettings.company_logo;
+
+    if (!logoUrl) {
+      throw new Error("No Company Logo Uploaded");
+    }
+
+    const response = await fetch(logoUrl);
+
+    if (!response.ok) {
+      throw new Error("Logo download failed");
+    }
+
+    const blob = await response.blob();
+
+    const objectUrl = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = "MS-FIXER-Company-Logo.png";
+
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => {
+      URL.revokeObjectURL(objectUrl);
+    }, 2000);
+
+    notify("Logo Download Started");
+
+  } catch (error) {
+    showError(error);
+  }
 }
 
 /* SAVE SETTINGS HELPER */
