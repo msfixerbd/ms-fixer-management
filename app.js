@@ -954,13 +954,21 @@ async function loadAdminSettings() {
             </div>
           </div>
 
-          <div id="logoPreview" style="margin:15px 0">
-            ${data.company_logo ? `
-              <img src="${escapeHTML(data.company_logo)}"
-                alt="Company Logo"
-                style="max-width:130px;max-height:100px;object-fit:contain">
-            ` : "No Logo Uploaded"}
-          </div>
+         
+<div id="logoPreview" style="margin:15px 0">
+  ${data.company_logo ? `
+    <div style="display:flex;align-items:center;gap:15px;flex-wrap:wrap">
+      <img src="${escapeHTML(data.company_logo)}"
+        alt="MS FIXER Logo"
+        style="width:130px;height:100px;object-fit:contain">
+
+      <button type="button" id="downloadCompanyLogo"
+        class="primary-small">
+        Download Logo
+      </button>
+    </div>
+  ` : "No Logo Uploaded"}
+</div>
 
           <button type="submit" class="primary-btn">
             Save Company Profile
