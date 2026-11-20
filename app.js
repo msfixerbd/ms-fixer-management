@@ -1104,26 +1104,33 @@ async function downloadCompanyLogo() {
         <p>Owner ID: <small>${escapeHTML(currentUser.id)}</small></p>
       </div>
     `;
+$("companySettingsForm").addEventListener("submit", saveCompanySettings);
 
-    $("companySettingsForm").addEventListener("submit", saveCompanySettings);
-    $("invoiceSettingsForm").addEventListener("submit", saveInvoiceSettings);
-    $("appearanceForm").addEventListener("submit", saveAppearanceSettings);
-    $("passwordChangeForm").addEventListener("submit", changeAdminPassword);
-    $("backupButton").addEventListener("click", downloadDataBackup);
-  } catch (error) {
-    console.error("Admin Settings Error:", error);
+const logoDownloadButton = $("downloadCompanyLogo");
 
-    content.innerHTML = `
-      <div class="panel">
-        <h3>Settings Error</h3>
-        <pre style="white-space:pre-wrap;color:red;">
+if (logoDownloadButton) {
+  logoDownloadButton.addEventListener("click", downloadCompanyLogo);
+}
+
+$("invoiceSettingsForm").addEventListener("submit", saveInvoiceSettings);
+$("appearanceForm").addEventListener("submit", saveAppearanceSettings);
+$("passwordChangeForm").addEventListener("submit", changeAdminPassword);
+$("backupButton").addEventListener("click", downloadDataBackup);
+
+} catch (error) {
+  console.error("Admin Settings Error:", error);
+
+  content.innerHTML = `
+    <div class="panel">
+      <h3>Settings Error</h3>
+      <pre style="white-space:pre-wrap;color:red;">
 ${escapeHTML(error?.message || String(error))}
-        </pre>
-      </div>
-    `;
+      </pre>
+    </div>
+  `;
 
-    showError(error);
-  }
+  showError(error);
+}
 }
 
 /* SAVE SETTINGS HELPER */
