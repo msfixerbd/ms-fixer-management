@@ -918,6 +918,7 @@ async function loadAdminSettings() {
 
     content.innerHTML = `
       <div class="panel">
+      
         <h3>🏢 Company Profile</h3>
 
         <form id="companySettingsForm" class="form-card">
@@ -928,6 +929,34 @@ async function loadAdminSettings() {
                 value="${escapeHTML(data.company_name || "MS FIXER")}"
                 required>
             </div>
+
+async function downloadCompanyLogo() {
+  try {
+    const logoUrl = appSettings.company_logo;
+
+    if (!logoUrl) {
+      throw new Error("No Company Logo Uploaded");
+    }
+
+    const response = await fetch(logoUrl);
+    if (!response.ok) throw new Error("Logo download failed");
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "MS-FIXER-Company-Logo.png";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  } catch (error) {
+    showError(error);
+  }
+}
 
             <div>
               <label>Phone</label>
