@@ -523,7 +523,6 @@ async function loadDashboard() {
     showError(error);
     content.innerHTML = "<p>Dashboard load করা যায়নি।</p>";
   }
-}
 } catch (error) {
   console.error("Admin Settings Error:", error);
 
