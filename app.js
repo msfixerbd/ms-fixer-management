@@ -424,27 +424,100 @@ $("menuBtn").addEventListener("click", () => {
 /* =========================================
    PAGE LOADER
    ========================================= */
-async function loadPage(page) {
-  currentPage = page;
-  editingId = null;
 
-  if (page === "dashboard") {
-    $("pageTitle").textContent = "Dashboard";
-    await loadDashboard();
-    return;
-  }
-
-  if (page === "settings") {
-    $("pageTitle").textContent = "Admin Settings";
-    await loadAdminSettings();
-    return;
-  }
-
+ 
+async function loadRecords(page) {
   const config = modules[page];
-  if (!config) return;
+  const list = $("recordList");
 
-  $("pageTitle").textContent = config.title;
-  await renderModule(page);
+  if (!config || !list) return;
+
+  list.innerHTML = "<p>Loading records...</p>";
+
+  try {
+    const { data, error } = await db
+      .from(config.table)
+      .select("*")
+      .limit(100);
+
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      list.innerHTML =
+        '<div class="empty-state">No records found.</div>';
+      return;
+    }
+
+    list.innerHTML = `
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              ${config.columns.map(column => `
+                <th>${escapeHTML(column.replaceAll("_", " "))}</th>
+              `).join("")}
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            ${data.map(record => `
+              <tr>
+                ${config.columns.map(column => {
+                  const value = record[column];
+
+                  const isMoney =
+                    column.includes("price") ||
+                    [
+                      "total", "paid", "due", "amount",
+                      "repair_cost", "unit_cost", "line_total"
+                    ].includes(column);
+
+                  return `
+                    <td>${escapeHTML(
+                      value == null
+                        ? "-"
+                        : isMoney
+                          ? money(value)
+                          : value
+                    )}</td>
+                  `;
+                }).join("")}
+
+                <td>
+                  <button class="primary-small"
+                    data-edit="${escapeHTML(record.id)}">
+                    Edit
+                  </button>
+
+                  <button class="danger-small"
+                    data-delete="${escapeHTML(record.id)}">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    list.querySelectorAll("[data-edit]").forEach(button => {
+      button.addEventListener("click", () => {
+        editRecord(page, button.dataset.edit);
+      });
+    });
+
+    list.querySelectorAll("[data-delete]").forEach(button => {
+      button.addEventListener("click", () => {
+        deleteRecord(page, button.dataset.delete);
+      });
+    });
+
+  } catch (error) {
+    showError(error);
+    list.innerHTML = "<p>Records load করা যায়নি।</p>";
+  }
 }
 /* =========================================
    DASHBOARD
