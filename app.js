@@ -1100,8 +1100,6 @@ ${escapeHTML(error?.message || String(error))}
 
     showError(error);
   }
-  } 
-  }
 }
 
 /* SAVE SETTINGS HELPER */
