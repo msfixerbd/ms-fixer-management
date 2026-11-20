@@ -1,30 +1,28 @@
 
-// =====================================
-// MS FIXER MANAGEMENT SYSTEM
-// Supabase Connected Application
-// =====================================
+/* =========================================
+   MS FIXER MANAGEMENT SYSTEM
+   Supabase Connected - Owner Only
+   ========================================= */
 
 const SUPABASE_URL = "https://usflivnclpeaqiqrakqd.supabase.co";
-
 const SUPABASE_KEY = "sb_publishable_CyKrvOTCoDJ7ubGoRbg_Sg_2alzW4FZ";
 
-const db = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let currentPage = "dashboard";
+let appStarted = false;
+let editingId = null;
 
 const $ = (id) => document.getElementById(id);
 
 function escapeHTML(value) {
-  return String(value ?? "").replace(/[&<>"']/g, char => ({
+  return String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;"
+    "'": "&#039;"
   })[char]);
 }
 
@@ -35,16 +33,302 @@ function money(value) {
   });
 }
 
-function notify(message) {
+function notify(message, error = false) {
   const toast = $("toast");
+  if (!toast) return;
+
   toast.textContent = message;
-  toast.style.display = "block";
-  setTimeout(() => toast.style.display = "none", 3000);
+  toast.style.background = error ? "#b42318" : "#16794b";
+  toast.classList.add("show");
+
+  setTimeout(() => toast.classList.remove("show"), 3000);
 }
 
-// =====================================
-// LOGIN
-// =====================================
+function showError(error) {
+  console.error(error);
+  notify(error?.message || "কাজটি সম্পন্ন হয়নি", true);
+}
+
+/* =========================================
+   MODULE CONFIGURATION
+   ========================================= */
+
+const modules = {
+  products: {
+    title: "Product Management",
+    table: "products",
+    columns: ["name", "sku", "category", "purchase_price", "selling_price", "stock"],
+    fields: [
+      ["name", "Product Name", "text", true],
+      ["sku", "Product Code / SKU", "text"],
+      ["category", "Category", "text"],
+      ["purchase_price", "Purchase Price", "number"],
+      ["selling_price", "Selling Price", "number"],
+      ["stock", "Opening Stock", "number"]
+    ]
+  },
+
+  categories: {
+    title: "Categories",
+    table: "categories",
+    columns: ["name", "description"],
+    fields: [
+      ["name", "Category Name", "text", true],
+      ["description", "Description", "text", true]
+    ]
+  },
+
+  customers: {
+    title: "Customers",
+    table: "customers",
+    columns: ["name", "phone", "address"],
+    fields: [
+      ["name", "Customer Name", "text", true],
+      ["phone", "Phone", "tel"],
+      ["address", "Address", "text"]
+    ]
+  },
+
+  suppliers: {
+    title: "Suppliers",
+    table: "suppliers",
+    columns: ["name", "phone", "address"],
+    fields: [
+      ["name", "Supplier Name", "text", true],
+      ["phone", "Phone", "tel"],
+      ["address", "Address", "text"]
+    ]
+  },
+
+  branches: {
+    title: "Branch Management",
+    table: "branches",
+    columns: ["branch_code", "name", "phone", "address", "status"],
+    fields: [
+      ["branch_code", "Branch Code", "text", true],
+      ["name", "Branch Name", "text", true],
+      ["phone", "Phone", "tel"],
+      ["address", "Address", "text"],
+      ["status", "Status", "select", false, ["active", "inactive"]]
+    ]
+  },
+
+  employees: {
+    title: "Employee Management",
+    table: "employees",
+    columns: ["employee_code", "full_name", "phone", "department", "role", "status"],
+    fields: [
+      ["employee_code", "Employee Code", "text", true],
+      ["full_name", "Full Name", "text", true],
+      ["phone", "Phone", "tel"],
+      ["email", "Email", "email"],
+      ["department", "Department", "text"],
+      ["role", "Role", "select", false, ["staff", "manager", "admin"]],
+      ["branch_id", "Branch", "relation", false, "branches"],
+      ["status", "Status", "select", false, ["active", "inactive"]]
+    ]
+  },
+
+  sales: {
+    title: "Sales & POS",
+    table: "sales",
+    columns: ["invoice_no", "customer_id", "total", "paid", "due", "created_at"],
+    fields: [
+      ["invoice_no", "Invoice Number", "text"],
+      ["customer_id", "Customer", "relation", false, "customers"],
+      ["total", "Total Amount", "number", true],
+      ["paid", "Paid Amount", "number"],
+      ["branch_id", "Branch", "relation", false, "branches"]
+    ]
+  },
+
+  sales_items: {
+    title: "Sales Items",
+    table: "sales_items",
+    columns: ["sale_id", "product_id", "quantity", "unit_price", "discount", "line_total"],
+    fields: [
+      ["sale_id", "Sale Invoice", "relation", true, "sales"],
+      ["product_id", "Product", "relation", true, "products"],
+      ["quantity", "Quantity", "number", true],
+      ["unit_price", "Unit Price", "number", true],
+      ["discount", "Discount", "number"],
+      ["line_total", "Line Total", "number", true]
+    ]
+  },
+
+  purchases: {
+    title: "Purchase Management",
+    table: "purchases",
+    columns: ["invoice_no", "supplier_id", "total", "paid", "due", "purchase_date"],
+    fields: [
+      ["invoice_no", "Purchase Invoice", "text", true],
+      ["supplier_id", "Supplier", "relation", false, "suppliers"],
+      ["branch_id", "Branch", "relation", false, "branches"],
+      ["subtotal", "Subtotal", "number"],
+      ["discount", "Discount", "number"],
+      ["total", "Total", "number", true],
+      ["paid", "Paid", "number"],
+      ["notes", "Notes", "text"]
+    ]
+  },
+
+  purchase_items: {
+    title: "Purchase Items",
+    table: "purchase_items",
+    columns: ["purchase_id", "product_id", "quantity", "unit_cost", "line_total"],
+    fields: [
+      ["purchase_id", "Purchase Invoice", "relation", true, "purchases"],
+      ["product_id", "Product", "relation", true, "products"],
+      ["quantity", "Quantity", "number", true],
+      ["unit_cost", "Unit Cost", "number", true],
+      ["line_total", "Line Total", "number", true]
+    ]
+  },
+
+  inventory: {
+    title: "Inventory / Stock Movement",
+    table: "stock_movements",
+    columns: ["product_id", "movement_type", "quantity", "branch_id", "notes"],
+    fields: [
+      ["product_id", "Product", "relation", true, "products"],
+      ["movement_type", "Movement Type", "select", true,
+        ["opening", "purchase", "sale", "return", "adjustment", "damage"]],
+      ["quantity", "Quantity (+/-)", "number", true],
+      ["branch_id", "Branch", "relation", false, "branches"],
+      ["notes", "Notes", "text"]
+    ]
+  },
+
+  expenses: {
+    title: "Expenses",
+    table: "expenses",
+    columns: ["title", "amount", "created_at"],
+    fields: [
+      ["title", "Expense Title", "text", true],
+      ["amount", "Amount", "number", true]
+    ]
+  },
+
+  accounts: {
+    title: "Accounts & Transactions",
+    table: "financial_transactions",
+    columns: ["transaction_type", "category", "amount", "description", "transaction_date"],
+    fields: [
+      ["transaction_type", "Transaction Type", "select", true,
+        ["income", "expense", "transfer"]],
+      ["category", "Category", "text"],
+      ["amount", "Amount", "number", true],
+      ["description", "Description", "text"],
+      ["branch_id", "Branch", "relation", false, "branches"]
+    ]
+  },
+
+  payments: {
+    title: "Payment Management",
+    table: "payments",
+    columns: ["amount", "payment_method", "payment_date", "reference_no", "notes"],
+    fields: [
+      ["sale_id", "Sales Invoice", "relation", false, "sales"],
+      ["purchase_id", "Purchase Invoice", "relation", false, "purchases"],
+      ["customer_id", "Customer", "relation", false, "customers"],
+      ["supplier_id", "Supplier", "relation", false, "suppliers"],
+      ["amount", "Payment Amount", "number", true],
+      ["payment_method", "Payment Method", "select", false,
+        ["cash", "bank", "bkash", "nagad", "card", "other"]],
+      ["reference_no", "Reference Number", "text"],
+      ["notes", "Notes", "text"]
+    ]
+  },
+
+  service: {
+    title: "Service & Repair",
+    table: "service_jobs",
+    columns: ["job_no", "customer_id", "device_name", "device_model", "repair_cost", "status"],
+    fields: [
+      ["job_no", "Job Card Number", "text", true],
+      ["customer_id", "Customer", "relation", false, "customers"],
+      ["branch_id", "Branch", "relation", false, "branches"],
+      ["device_name", "Device Name", "text"],
+      ["device_model", "Device Model", "text"],
+      ["serial_number", "Serial Number", "text"],
+      ["problem_description", "Customer Problem", "text"],
+      ["diagnosis", "Diagnosis", "text"],
+      ["repair_cost", "Repair Cost", "number"],
+      ["status", "Job Status", "select", false,
+        ["received", "checking", "waiting_parts", "repairing", "completed", "delivered"]],
+      ["delivery_date", "Delivery Date", "date"],
+      ["notes", "Notes", "text"]
+    ]
+  },
+
+  warranty: {
+    title: "Warranty Management",
+    table: "warranty_cards",
+    columns: ["warranty_no", "product_id", "customer_id", "serial_number", "start_date", "end_date", "status"],
+    fields: [
+      ["warranty_no", "Warranty Number", "text", true],
+      ["product_id", "Product", "relation", false, "products"],
+      ["sale_id", "Sales Invoice", "relation", false, "sales"],
+      ["customer_id", "Customer", "relation", false, "customers"],
+      ["serial_number", "Serial Number", "text"],
+      ["start_date", "Start Date", "date", true],
+      ["end_date", "End Date", "date", true],
+      ["warranty_terms", "Warranty Terms", "text"],
+      ["status", "Status", "select", false, ["active", "expired", "claimed"]]
+    ]
+  }
+};
+
+/* =========================================
+   LOGIN & OWNER SECURITY
+   ========================================= */
+
+async function startApp() {
+  if (appStarted) return;
+
+  appStarted = true;
+
+  try {
+    const { data: { user } } = await db.auth.getUser();
+
+    if (!user) {
+      appStarted = false;
+      return showLogin();
+    }
+
+    const { data, error } = await db.rpc("is_ms_fixer_owner");
+
+    if (error) throw error;
+
+    if (data !== true) {
+      await db.auth.signOut();
+      appStarted = false;
+      return showLogin("এই অ্যাকাউন্টের Owner Access নেই।");
+    }
+
+    currentUser = user;
+
+    $("loginScreen").classList.add("hidden");
+    $("appScreen").classList.remove("hidden");
+
+    buildNavigation();
+    await loadPage("dashboard");
+
+  } catch (error) {
+    appStarted = false;
+    showError(error);
+    showLogin("Login যাচাই করা যায়নি।");
+  }
+}
+
+function showLogin(message = "") {
+  $("loginScreen").classList.remove("hidden");
+  $("appScreen").classList.add("hidden");
+
+  if ($("loginMessage")) {
+    $("loginMessage").textContent = message;
+  }
+}
 
 $("loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -52,9 +336,9 @@ $("loginForm").addEventListener("submit", async (event) => {
   const email = $("email").value.trim();
   const password = $("password").value;
 
-  $("loginMessage").textContent = "Logging in...";
+  $("loginMessage").textContent = "Checking...";
 
-  const { data, error } = await db.auth.signInWithPassword({
+  const { error } = await db.auth.signInWithPassword({
     email,
     password
   });
@@ -64,96 +348,101 @@ $("loginForm").addEventListener("submit", async (event) => {
     return;
   }
 
-  currentUser = data.user;
   await startApp();
-});
-
-async function startApp() {
-  if (!currentUser) return;
-
-  const { data: owner, error } = await db
-    .rpc("is_ms_fixer_owner");
-
-  if (error || owner !== true) {
-    await db.auth.signOut();
-    $("loginMessage").textContent =
-      "This account is not authorized as MS Fixer owner.";
-    $("loginScreen").classList.remove("hidden");
-    $("appScreen").classList.add("hidden");
-    return;
-  }
-
-  $("loginScreen").classList.add("hidden");
-  $("appScreen").classList.remove("hidden");
-
-  await showPage("dashboard");
-}
-
-db.auth.onAuthStateChange((event, session) => {
-  currentUser = session?.user || null;
-
-  if (event === "SIGNED_IN" && currentUser) {
-    setTimeout(() => startApp(), 0);
-  }
-
-  if (event === "SIGNED_OUT") {
-    $("appScreen").classList.add("hidden");
-    $("loginScreen").classList.remove("hidden");
-  }
 });
 
 $("logoutBtn").addEventListener("click", async () => {
   await db.auth.signOut();
   currentUser = null;
+  appStarted = false;
+  showLogin();
 });
 
-// =====================================
-// NAVIGATION
-// =====================================
-
-$("navigation").addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-page]");
-  if (!button) return;
-
-  await showPage(button.dataset.page);
-  $("sidebar").classList.remove("open");
+db.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_OUT") {
+    currentUser = null;
+    appStarted = false;
+    showLogin();
+  }
 });
+
+/* =========================================
+   NAVIGATION
+   ========================================= */
+
+const navigationItems = [
+  ["dashboard", "Dashboard"],
+  ["products", "Products"],
+  ["categories", "Categories"],
+  ["sales", "Sales & POS"],
+  ["sales_items", "Sales Items"],
+  ["purchases", "Purchases"],
+  ["purchase_items", "Purchase Items"],
+  ["inventory", "Inventory"],
+  ["accounts", "Accounts"],
+  ["payments", "Payments"],
+  ["customers", "Customers"],
+  ["suppliers", "Suppliers"],
+  ["service", "Service & Repair"],
+  ["warranty", "Warranty"],
+  ["branches", "Branches"],
+  ["employees", "Employees"],
+  ["expenses", "Expenses"]
+];
+
+function buildNavigation() {
+  const nav = $("navigation");
+  nav.innerHTML = "";
+
+  navigationItems.forEach(([page, label]) => {
+    const button = document.createElement("button");
+    button.className = "nav-item";
+    button.dataset.page = page;
+    button.textContent = label;
+
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".nav-item").forEach(item =>
+        item.classList.remove("active")
+      );
+
+      button.classList.add("active");
+      loadPage(page);
+
+      $("sidebar").classList.remove("open");
+    });
+
+    nav.appendChild(button);
+  });
+}
 
 $("menuBtn").addEventListener("click", () => {
   $("sidebar").classList.toggle("open");
 });
 
-async function showPage(page) {
+/* =========================================
+   PAGE LOADER
+   ========================================= */
+
+async function loadPage(page) {
   currentPage = page;
-
-  document.querySelectorAll(".nav-item").forEach(button => {
-    button.classList.toggle(
-      "active",
-      button.dataset.page === page
-    );
-  });
-
-  const titles = {
-    dashboard: "Dashboard",
-    products: "Products",
-    customers: "Customers",
-    suppliers: "Suppliers",
-    sales: "Sales",
-    expenses: "Expenses"
-  };
-
-  $("pageTitle").textContent = titles[page] || "MS Fixer";
+  editingId = null;
 
   if (page === "dashboard") {
-    await renderDashboard();
-  } else {
-    await renderModule(page);
+    $("pageTitle").textContent = "Dashboard";
+    await loadDashboard();
+    return;
   }
+
+  const config = modules[page];
+  if (!config) return;
+
+  $("pageTitle").textContent = config.title;
+  await renderModule(page);
 }
 
-// =====================================
-// DASHBOARD
-// =====================================
+/* =========================================
+   DASHBOARD
+   ========================================= */
 
 async function getCount(table) {
   const { count, error } = await db
@@ -164,344 +453,433 @@ async function getCount(table) {
   return count || 0;
 }
 
-async function renderDashboard() {
+async function getSum(table, column) {
+  const { data, error } = await db.from(table).select(column);
+  if (error) throw error;
+
+  return (data || []).reduce(
+    (sum, item) => sum + Number(item[column] || 0), 0
+  );
+}
+
+async function loadDashboard() {
   const content = $("pageContent");
-
-  content.innerHTML = `
-    <div class="stats-grid">
-      <div class="stat-card">
-        <small>Total Products</small>
-        <h3 id="statProducts">...</h3>
-      </div>
-      <div class="stat-card">
-        <small>Total Customers</small>
-        <h3 id="statCustomers">...</h3>
-      </div>
-      <div class="stat-card">
-        <small>Total Sales</small>
-        <h3 id="statSales">...</h3>
-      </div>
-      <div class="stat-card">
-        <small>Total Expenses</small>
-        <h3 id="statExpenses">...</h3>
-      </div>
-    </div>
-
-    <div class="panel">
-      <h3>Business Overview</h3>
-      <p>Welcome to MS Fixer Management System.</p>
-      <p style="margin-top:12px;color:#64748b">
-        Your business data is connected to Supabase.
-      </p>
-    </div>
-  `;
+  content.innerHTML = "<p>Loading Dashboard...</p>";
 
   try {
-    const [products, customers, sales, expenses] =
-      await Promise.all([
-        getCount("products"),
-        getCount("customers"),
-        db.from("sales").select("total"),
-        db.from("expenses").select("amount")
-      ]);
+    const [
+      products,
+      customers,
+      salesCount,
+      expensesCount,
+      salesTotal,
+      expensesTotal,
+      stockTotal,
+      salesDue
+    ] = await Promise.all([
+      getCount("products"),
+      getCount("customers"),
+      getCount("sales"),
+      getCount("expenses"),
+      getSum("sales", "total"),
+      getSum("expenses", "amount"),
+      getSum("products", "stock"),
+      getSum("sales", "due")
+    ]);
 
-    if (sales.error) throw sales.error;
-    if (expenses.error) throw expenses.error;
+    content.innerHTML = `
+      <div class="stats-grid">
+        ${statCard("Total Products", products)}
+        ${statCard("Total Customers", customers)}
+        ${statCard("Total Sales", salesCount)}
+        ${statCard("Total Expenses", expensesCount)}
+        ${statCard("Sales Amount", money(salesTotal))}
+        ${statCard("Expenses Amount", money(expensesTotal))}
+        ${statCard("Total Stock", stockTotal)}
+        ${statCard("Customer Due", money(salesDue))}
+      </div>
 
-    $("statProducts").textContent = products;
-    $("statCustomers").textContent = customers;
-
-    const totalSales = (sales.data || [])
-      .reduce((sum, row) => sum + Number(row.total || 0), 0);
-
-    const totalExpenses = (expenses.data || [])
-      .reduce((sum, row) => sum + Number(row.amount || 0), 0);
-
-    $("statSales").textContent = money(totalSales);
-    $("statExpenses").textContent = money(totalExpenses);
-
+      <div class="panel">
+        <h3>Business Overview</h3>
+        <p>Sales Amount: <strong>${money(salesTotal)}</strong></p>
+        <p>Expenses: <strong>${money(expensesTotal)}</strong></p>
+        <p>Sales less recorded expenses:
+          <strong>${money(salesTotal - expensesTotal)}</strong>
+        </p>
+        <small>
+          এটি প্রাথমিক হিসাব। পণ্যের ক্রয়মূল্য, Purchase, Returns,
+          Payments ও অন্যান্য খরচ যুক্ত না হওয়া পর্যন্ত এটিকে
+          প্রকৃত Net Profit হিসেবে ধরবে না।
+        </small>
+      </div>
+    `;
   } catch (error) {
-    notify("Dashboard error: " + error.message);
+    showError(error);
+    content.innerHTML = "<p>Dashboard load করা যায়নি।</p>";
   }
 }
 
-// =====================================
-// MODULE DEFINITIONS
-// =====================================
+function statCard(title, value) {
+  return `
+    <div class="stat-card">
+      <h3>${escapeHTML(title)}</h3>
+      <strong>${escapeHTML(value)}</strong>
+    </div>
+  `;
+}
 
-const modules = {
-  products: {
-    title: "Products",
-    table: "products",
-    columns: [
-      { key: "name", label: "Product Name", required: true },
-      { key: "sku", label: "SKU" },
-      { key: "category", label: "Category" },
-      { key: "purchase_price", label: "Purchase Price", type: "number" },
-      { key: "selling_price", label: "Selling Price", type: "number" },
-      { key: "stock", label: "Stock", type: "number" }
-    ],
-    display: ["name", "sku", "selling_price", "stock"]
-  },
+/* =========================================
+   MODULE FORM
+   ========================================= */
 
-  customers: {
-    title: "Customers",
-    table: "customers",
-    columns: [
-      { key: "name", label: "Customer Name", required: true },
-      { key: "phone", label: "Phone" },
-      { key: "address", label: "Address" }
-    ],
-    display: ["name", "phone", "address"]
-  },
+async function getRelationOptions(table) {
+  const { data, error } = await db.from(table).select("*").limit(500);
+  if (error) throw error;
 
-  suppliers: {
-    title: "Suppliers",
-    table: "suppliers",
-    columns: [
-      { key: "name", label: "Supplier Name", required: true },
-      { key: "phone", label: "Phone" },
-      { key: "address", label: "Address" }
-    ],
-    display: ["name", "phone", "address"]
-  },
+  return (data || []).map(item => ({
+    id: item.id,
+    label:
+      item.name ||
+      item.full_name ||
+      item.invoice_no ||
+      item.job_no ||
+      item.warranty_no ||
+      item.branch_code ||
+      item.id
+  }));
+}
 
-  expenses: {
-    title: "Expenses",
-    table: "expenses",
-    columns: [
-      { key: "title", label: "Expense Title", required: true },
-      { key: "amount", label: "Amount", type: "number", required: true }
-    ],
-    display: ["title", "amount", "created_at"]
-  },
+async function makeField(field, existing = {}) {
+  const [name, label, type, required, options] = field;
+  const value = existing[name] ?? "";
 
-  sales: {
-    title: "Sales",
-    table: "sales",
-    columns: [
-      { key: "invoice_no", label: "Invoice Number", required: true },
-      { key: "total", label: "Total Amount", type: "number", required: true },
-      { key: "paid", label: "Paid Amount", type: "number" },
-      { key: "due", label: "Due Amount", type: "number" }
-    ],
-    display: ["invoice_no", "total", "paid", "due", "created_at"]
+  if (type === "relation") {
+    const records = await getRelationOptions(options);
+
+    return `
+      <label>${escapeHTML(label)}</label>
+      <select name="${name}" ${required ? "required" : ""}>
+        <option value="">Select ${escapeHTML(label)}</option>
+        ${records.map(record => `
+          <option value="${escapeHTML(record.id)}"
+            ${String(value) === String(record.id) ? "selected" : ""}>
+            ${escapeHTML(record.label)}
+          </option>
+        `).join("")}
+      </select>
+    `;
   }
-};
 
-// =====================================
-// MODULE PAGE
-// =====================================
+  if (type === "select") {
+    return `
+      <label>${escapeHTML(label)}</label>
+      <select name="${name}" ${required ? "required" : ""}>
+        <option value="">Select</option>
+        ${options.map(option => `
+          <option value="${escapeHTML(option)}"
+            ${String(value) === option ? "selected" : ""}>
+            ${escapeHTML(option)}
+          </option>
+        `).join("")}
+      </select>
+    `;
+  }
+
+  return `
+    <label>${escapeHTML(label)}</label>
+    <input
+      name="${name}"
+      type="${type}"
+      value="${escapeHTML(value)}"
+      ${type === "number" ? 'step="any"' : ""}
+      ${required ? "required" : ""}
+      placeholder="${escapeHTML(label)}"
+    >
+  `;
+}
 
 async function renderModule(page) {
   const config = modules[page];
-  if (!config) return;
-
   const content = $("pageContent");
 
-  content.innerHTML = `
-    <div class="page-heading">
-      <h3>${config.title}</h3>
-      <button class="primary-small" id="addRecordBtn">
-        + Add New
-      </button>
-    </div>
+  content.innerHTML = "<p>Loading...</p>";
 
-    <div id="recordFormArea"></div>
+  try {
+    const fields = await Promise.all(
+      config.fields.map(field => makeField(field))
+    );
 
-    <div class="panel">
-      <div id="tableArea" class="empty-state">Loading...</div>
-    </div>
-  `;
+    content.innerHTML = `
+      <div class="panel">
+        <div class="page-heading">
+          <h3>${escapeHTML(config.title)}</h3>
+        </div>
 
-  $("addRecordBtn").addEventListener("click", () => {
-    showRecordForm(config);
-  });
+        <form id="recordForm" class="form-card">
+          <div class="form-row">
+            ${fields.map(field => `<div>${field}</div>`).join("")}
+          </div>
+          <button type="submit" class="primary-btn" id="saveBtn">
+            Save Record
+          </button>
+          <button type="button" id="cancelEdit" class="primary-small">
+            Cancel
+          </button>
+        </form>
+      </div>
 
-  await loadRecords(config);
-}
+      <div class="panel">
+        <h3>${escapeHTML(config.title)} Records</h3>
+        <div id="recordList">Loading records...</div>
+      </div>
+    `;
 
-// =====================================
-// ADD FORM
-// =====================================
+    $("recordForm").addEventListener("submit", event =>
+      saveRecord(event, page)
+    );
 
-function showRecordForm(config) {
-  const area = $("recordFormArea");
-
-  const fields = config.columns.map(column => `
-    <div>
-      <label>${escapeHTML(column.label)}</label>
-      <input
-        name="${escapeHTML(column.key)}"
-        type="${column.type || "text"}"
-        ${column.required ? "required" : ""}
-        ${column.type === "number" ? 'step="0.01" min="0"' : ""}
-        placeholder="${escapeHTML(column.label)}"
-      >
-    </div>
-  `).join("");
-
-  area.innerHTML = `
-    <div class="form-card">
-      <h3>Add ${escapeHTML(config.title)}</h3>
-      <form id="recordForm">
-        <div class="form-row">${fields}</div>
-        <button type="submit" class="primary-btn">
-          Save Record
-        </button>
-        <button type="button" id="cancelForm"
-          class="danger-small" style="margin-top:10px;width:100%">
-          Cancel
-        </button>
-      </form>
-    </div>
-  `;
-
-  $("cancelForm").addEventListener("click", () => {
-    area.innerHTML = "";
-  });
-
-  $("recordForm").addEventListener("submit", async event => {
-    event.preventDefault();
-
-    const formData = new FormData(event.target);
-    const record = {};
-
-    config.columns.forEach(column => {
-      const value = formData.get(column.key);
-
-      if (value === "") {
-        record[column.key] = null;
-      } else if (column.type === "number") {
-        record[column.key] = Number(value);
-      } else {
-        record[column.key] = value;
-      }
+    $("cancelEdit").addEventListener("click", () => {
+      editingId = null;
+      renderModule(page);
     });
 
-    if (config.table === "sales") {
-      record.paid = record.paid ?? 0;
-      record.due = record.total - record.paid;
+    await loadRecords(page);
 
-      if (record.paid > record.total) {
-        notify("Paid amount cannot exceed total.");
-        return;
-      }
-    }
-
-    const { error } = await db
-      .from(config.table)
-      .insert(record);
-
-    if (error) {
-      notify("Save failed: " + error.message);
-      return;
-    }
-
-    notify("Record saved successfully!");
-    area.innerHTML = "";
-    await loadRecords(config);
-  });
+  } catch (error) {
+    showError(error);
+    content.innerHTML = "<p>Module load করা যায়নি।</p>";
+  }
 }
 
-// =====================================
-// LOAD RECORDS
-// =====================================
+/* =========================================
+   SAVE / UPDATE RECORD
+   ========================================= */
 
-async function loadRecords(config) {
-  const area = $("tableArea");
+async function saveRecord(event, page) {
+  event.preventDefault();
 
-  const { data, error } = await db
-    .from(config.table)
-    .select("*")
-    .order("created_at", { ascending: false });
+  const config = modules[page];
+  const formData = new FormData(event.target);
+  const record = {};
+
+  config.fields.forEach(([name, label, type]) => {
+    const value = formData.get(name);
+
+    if (value === "" || value === null) return;
+
+    record[name] = type === "number" ? Number(value) : value;
+  });
+
+  if (page === "sales") {
+    record.paid = record.paid || 0;
+    record.due = Number(record.total || 0) - Number(record.paid || 0);
+
+    if (record.paid > record.total || record.due < 0) {
+      return notify("Paid Amount Total-এর বেশি হতে পারবে না।", true);
+    }
+  }
+
+  if (page === "purchases") {
+    record.subtotal = record.subtotal || record.total || 0;
+    record.discount = record.discount || 0;
+    record.paid = record.paid || 0;
+    record.due = Number(record.total || 0) - Number(record.paid || 0);
+
+    if (record.paid > record.total || record.due < 0) {
+      return notify("Paid Amount Total-এর বেশি হতে পারবে না।", true);
+    }
+  }
+
+  if (page === "sales_items" || page === "purchase_items") {
+    const quantity = Number(record.quantity || 0);
+    const price = Number(record.unit_price ?? record.unit_cost ?? 0);
+    const discount = Number(record.discount || 0);
+
+    if (quantity <= 0 || price < 0 || discount < 0) {
+      return notify("Quantity, Price বা Discount সঠিক নয়।", true);
+    }
+
+    record.line_total = Math.max(0, quantity * price - discount);
+  }
+
+  try {
+    let result;
+
+    if (editingId) {
+      result = await db
+        .from(config.table)
+        .update(record)
+        .eq("id", editingId);
+    } else {
+      result = await db.from(config.table).insert(record);
+    }
+
+    if (result.error) throw result.error;
+
+    notify(editingId ? "Record Updated" : "Record Saved");
+
+    editingId = null;
+    await renderModule(page);
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* =========================================
+   LOAD RECORDS
+   ========================================= */
+
+async function loadRecords(page) {
+  const config = modules[page];
+  const list = $("recordList");
+
+  let query = db.from(config.table).select("*");
+
+  // categories.created_at is UUID, not a timestamp.
+  if (page !== "categories") {
+    query = query.order("created_at", { ascending: false });
+  }
+
+  const { data, error } = await query.limit(100);
 
   if (error) {
-    area.innerHTML = "Error: " + escapeHTML(error.message);
+    showError(error);
+    list.innerHTML = "<p>Records load করা যায়নি।</p>";
     return;
   }
 
   if (!data || data.length === 0) {
-    area.innerHTML = '<div class="empty-state">No records found.</div>';
+    list.innerHTML = '<div class="empty-state">No records found.</div>';
     return;
   }
 
-  const headings = config.display.map(key => {
-    const column = config.columns.find(item => item.key === key);
-    return `<th>${escapeHTML(column?.label || key)}</th>`;
-  }).join("");
-
-  const rows = data.map(record => `
-    <tr>
-      ${config.display.map(key => {
-        let value = record[key] ?? "-";
-
-        if (key.includes("price") || key === "amount" ||
-            ["total", "paid", "due"].includes(key)) {
-          value = money(value);
-        }
-
-        if (key === "created_at" && value !== "-") {
-          value = new Date(value).toLocaleDateString("en-GB");
-        }
-
-        return `<td>${escapeHTML(value)}</td>`;
-      }).join("")}
-      <td>
-        <button class="danger-small delete-record"
-          data-id="${escapeHTML(record.id)}">
-          Delete
-        </button>
-      </td>
-    </tr>
-  `).join("");
-
-  area.innerHTML = `
-    <table class="data-table">
-      <thead>
-        <tr>${headings}<th>Action</th></tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
+  list.innerHTML = `
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            ${config.columns.map(column =>
+              `<th>${escapeHTML(column.replaceAll("_", " "))}</th>`
+            ).join("")}
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.map(record => `
+            <tr>
+              ${config.columns.map(column => `
+                <td>${escapeHTML(
+                  column.includes("price") ||
+                  ["total", "paid", "due", "amount", "repair_cost", "unit_cost", "line_total"].includes(column)
+                    ? money(record[column])
+                    : record[column] ?? "-"
+                )}</td>
+              `).join("")}
+              <td>
+                <button class="primary-small"
+                  data-edit="${escapeHTML(record.id)}">Edit</button>
+                <button class="danger-small"
+                  data-delete="${escapeHTML(record.id)}">Delete</button>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
   `;
 
-  area.querySelectorAll(".delete-record").forEach(button => {
-    button.addEventListener("click", async () => {
-      if (!confirm("Are you sure you want to delete this record?")) {
-        return;
-      }
+  list.querySelectorAll("[data-edit]").forEach(button => {
+    button.addEventListener("click", () =>
+      editRecord(page, button.dataset.edit)
+    );
+  });
 
-      const { error } = await db
-        .from(config.table)
-        .delete()
-        .eq("id", button.dataset.id);
-
-      if (error) {
-        notify("Delete failed: " + error.message);
-        return;
-      }
-
-      notify("Record deleted.");
-      await loadRecords(config);
-    });
+  list.querySelectorAll("[data-delete]").forEach(button => {
+    button.addEventListener("click", () =>
+      deleteRecord(page, button.dataset.delete)
+    );
   });
 }
 
-// =====================================
-// INITIAL SESSION CHECK
-// =====================================
+/* =========================================
+   EDIT RECORD
+   ========================================= */
+
+async function editRecord(page, id) {
+  const config = modules[page];
+
+  try {
+    const { data, error } = await db
+      .from(config.table)
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) throw error;
+
+    editingId = id;
+
+    const fields = await Promise.all(
+      config.fields.map(field => makeField(field, data))
+    );
+
+    const content = $("pageContent");
+
+    content.querySelector(".form-card").innerHTML = `
+      <div class="form-row">
+        ${fields.map(field => `<div>${field}</div>`).join("")}
+      </div>
+      <button type="submit" class="primary-btn">Update Record</button>
+      <button type="button" id="cancelEdit" class="primary-small">Cancel</button>
+    `;
+
+    $("cancelEdit").addEventListener("click", () => {
+      editingId = null;
+      renderModule(page);
+    });
+
+    notify("Edit Mode");
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* =========================================
+   DELETE RECORD
+   ========================================= */
+
+async function deleteRecord(page, id) {
+  if (!confirm("তুমি কি এই Record Delete করতে চাও?")) return;
+
+  try {
+    const { error } = await db
+      .from(modules[page].table)
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+
+    notify("Record Deleted");
+    await renderModule(page);
+
+  } catch (error) {
+    showError(error);
+  }
+}
+
+/* =========================================
+   INITIALIZE
+   ========================================= */
 
 async function initialize() {
-  const { data, error } = await db.auth.getSession();
+  const { data: { session } } = await db.auth.getSession();
 
-  if (error) {
-    $("loginMessage").textContent = error.message;
-    return;
-  }
-
-  if (data.session?.user) {
-    currentUser = data.session.user;
+  if (session) {
     await startApp();
+  } else {
+    showLogin();
   }
 }
 
