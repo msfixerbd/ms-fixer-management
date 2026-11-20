@@ -1086,10 +1086,21 @@ async function loadAdminSettings() {
     $("appearanceForm").addEventListener("submit", saveAppearanceSettings);
     $("passwordChangeForm").addEventListener("submit", changeAdminPassword);
     $("backupButton").addEventListener("click", downloadDataBackup);
-
   } catch (error) {
+    console.error("Admin Settings Error:", error);
+
+    content.innerHTML = `
+      <div class="panel">
+        <h3>Settings Error</h3>
+        <pre style="white-space:pre-wrap;color:red;">
+${escapeHTML(error?.message || String(error))}
+        </pre>
+      </div>
+    `;
+
     showError(error);
-    content.innerHTML = "<p>Settings load করা যায়নি।</p>";
+  }
+  } 
   }
 }
 
