@@ -524,7 +524,20 @@ async function loadDashboard() {
     content.innerHTML = "<p>Dashboard load করা যায়নি।</p>";
   }
 }
+} catch (error) {
+  console.error("Admin Settings Error:", error);
 
+  content.innerHTML = `
+    <div class="panel">
+      <h3>Settings Error</h3>
+      <pre style="white-space:pre-wrap;color:red;">
+${escapeHTML(error?.message || String(error))}
+      </pre>
+    </div>
+  `;
+
+  showError(error);
+}
 function statCard(title, value) {
   return `
     <div class="stat-card">
